@@ -2,97 +2,145 @@ import json
 import os
 
 ARCHIVO = "estudiantes.json"
-estudiantes = {}
+
+lista_estudiantes = []
+lista_notas = []
+
+
+def contar_elementos(lista):
+    contador = 0
+    for _ in lista:
+        contador += 1
+    return contador
+
+
+def obtener_suma_y_cantidad(lista):
+    suma = 0
+    cantidad = 0
+    for x in lista:
+        suma += x
+        cantidad += 1
+    return suma, cantidad
+
+
+def buscar_estudiante(nombre):
+    indice = 0
+    for est in lista_estudiantes:
+        if est == nombre:
+            return indice
+        indice += 1
+    return -1
+
 
 def cargar_desde_archivo():
-    """Carga el diccionario 'estudiantes' desde un archivo JSON si existe."""
-    global estudiantes
+
     if os.path.exists(ARCHIVO):
-        try:
-            with open(ARCHIVO, "r", encoding="utf-8") as f:
-                estudiantes = json.load(f)
-            # json carga listas y números, pero si alguna nota fue guardada como entero,
-            # al calcular promedios se aceptan igual. Aseguramos listas:
-            for k, v in estudiantes.items():
-                if not isinstance(v, list):
-                    estudiantes[k] = list(v) if v is not None else []
-            print(f"✅ Datos cargados desde '{ARCHIVO}'.")
-        except (json.JSONDecodeError, IOError) as e:
-            print(f"⚠️ Error al leer '{ARCHIVO}': {e}. Se iniciará con datos vacíos.")
-            estudiantes = {}
+        with open(ARCHIVO, "r", encoding="utf-8") as f:
+            datos = json.load(f)
+
+        # limpiamos y volvemos a llenar las listas
+        lista_estudiantes.clear()
+        lista_notas.clear()
+
+        lista_estudiantes.extend(datos["estudiantes"])
+        lista_notas.extend(datos["notas"])
+
+        print("✅ Datos cargados correctamente.")
     else:
-        print(f"ℹ️ No existe '{ARCHIVO}'. Se iniciará con datos vacíos.")
+        print("ℹ️ No existe archivo, iniciando vacío.")
+
 
 def guardar_en_archivo():
-    """Guarda el diccionario 'estudiantes' en un archivo JSON."""
-    try:
-        with open(ARCHIVO, "w", encoding="utf-8") as f:
-            json.dump(estudiantes, f, ensure_ascii=False, indent=4)
-        print(f"✅ Datos guardados en '{ARCHIVO}'.")
-    except IOError as e:
-        print(f"⚠️ No se pudo guardar en '{ARCHIVO}': {e}")
+    datos = {
+        "estudiantes": lista_estudiantes,
+        "notas": lista_notas
+    }
+
+    with open(ARCHIVO, "w", encoding="utf-8") as f:
+        json.dump(datos, f, indent=4, ensure_ascii=False)
+
+    print("✅ Datos guardados.")
+
 
 def agregar_estudiante():
-    nombre = input("Ingrese el nombre del estudiante: ").strip().title()
-    if not nombre:
-        print("⚠️ Nombre vacío.")
+    nombre = input("Ingrese el nombre: ").strip().title()
+
+    if buscar_estudiante(nombre) != -1:
+        print("⚠️ Ese estudiante ya existe.")
         return
-    if nombre in estudiantes:
-        print("⚠️ El estudiante ya existe.")
-    else:
-        estudiantes[nombre] = []
-        print(f"✅ Estudiante '{nombre}' agregado correctamente.")
+
+    lista_estudiantes.append(nombre)
+    lista_notas.append([])
+    print(f"✅ Estudiante '{nombre}' agregado.")
+
 
 def agregar_notas():
-    nombre = input("Ingrese el nombre del estudiante: ").strip().title()
-    if nombre in estudiantes:
-        try:
-            nota = float(input("Ingrese la nota del estudiante (0.0 - 5.0): ").strip())
-            if 0.0 <= nota <= 5.0:
-                estudiantes[nombre].append(nota)
-                print(f"✅ Nota {nota} agregada a {nombre}.")
-            else:
-                print("⚠️ La nota debe estar entre 0.0 y 5.0.")
-        except ValueError:
-            print("⚠️ Debe ingresar un número válido.")
-    else:
+    nombre = input("Nombre del estudiante: ").strip().title()
+    pos = buscar_estudiante(nombre)
+
+    if pos == -1:
         print("⚠️ Estudiante no encontrado.")
+        return
+
+    nota = float(input("Ingrese la nota (0.0 - 5.0): "))
+    if 0 <= nota <= 5:
+        lista_notas[pos].append(nota)
+        print(f"✅ Nota {nota} agregada a {nombre}.")
+    else:
+        print("⚠️ Nota fuera de rango.")
+
 
 def mostrar_estudiantes():
-    if len(estudiantes) == 0:
-        print("⚠️ No hay estudiantes registrados.")
-    else:
-        print("\n📋 Lista de estudiantes y sus notas:")
-        for nombre, notas in estudiantes.items():
-            if notas:
-                promedio = sum(notas) / len(notas)
-                print(f"- {nombre}: Notas = {notas}, Promedio = {promedio:.2f}")
-            else:
-                print(f"- {nombre}: sin notas registradas.")
+    if contar_elementos(lista_estudiantes) == 0:
+        print("⚠️ No hay estudiantes.")
+        return
+
+    print("\n📋 Lista de estudiantes:")
+    indice = 0
+    for nombre in lista_estudiantes:
+        notas = lista_notas[indice]
+        suma, cantidad = obtener_suma_y_cantidad(notas)
+
+        if cantidad > 0:
+            promedio = suma / cantidad
+            print(f"- {nombre}: {notas} -> Promedio: {promedio:.2f}")
+        else:
+            print(f"- {nombre}: sin notas registradas.")
+
+        indice += 1
+
 
 def calcular_promedio_general():
-    total_notas = 0
-    cantidad_notas = 0
-    for notas in estudiantes.values():
-        total_notas += sum(notas)
-        cantidad_notas += len(notas)
-    if cantidad_notas == 0:
-        print("⚠️ No hay notas registradas para calcular el promedio general.")
+    total_suma = 0
+    total_cantidad = 0
+
+    for notas_est in lista_notas:
+        suma, cantidad = obtener_suma_y_cantidad(notas_est)
+        total_suma += suma
+        total_cantidad += cantidad
+
+    if total_cantidad == 0:
+        print("⚠️ No hay notas en todo el curso.")
     else:
-        promedio_general = total_notas / cantidad_notas
-        print(f"📊 Promedio general del curso: {promedio_general:.2f}")
+        print(f"📊 Promedio general: {total_suma / total_cantidad:.2f}")
+
 
 def eliminar_estudiante():
-    nombre = input("Ingrese el nombre del estudiante a eliminar: ").strip().title()
-    if nombre in estudiantes:
-        confirm = input(f"¿Eliminar a {nombre}? (s/n): ").strip().lower()
-        if confirm == "s":
-            estudiantes.pop(nombre)
-            print(f"✅ Estudiante {nombre} eliminado.")
-        else:
-            print("Operación cancelada.")
-    else:
+    nombre = input("Ingrese el nombre a eliminar: ").strip().title()
+    pos = buscar_estudiante(nombre)
+
+    if pos == -1:
         print("⚠️ Estudiante no encontrado.")
+        return
+
+    confirm = input(f"¿Eliminar a {nombre}? (s/n): ").lower()
+    if confirm == "s":
+        lista_estudiantes.pop(pos)
+        lista_notas.pop(pos)
+        print(f"✅ {nombre} eliminado.")
+    else:
+        print("Operación cancelada.")
+
 
 def menu():
     while True:
@@ -101,37 +149,31 @@ def menu():
 1. Agregar estudiante
 2. Agregar nota
 3. Mostrar estudiantes y notas
-4. Calcular promedio general
+4. Promedio general
 5. Eliminar estudiante
-6. Guardar datos en archivo
-7. Cargar datos desde archivo
+6. Guardar datos
+7. Cargar datos
 8. Salir
 ============================================
 """)
-        opcion = input("Seleccione una opción (1-8): ").strip()
+        op = input("Seleccione una opción (1-8): ").strip()
 
-        if opcion == "1":
-            agregar_estudiante()
-        elif opcion == "2":
-            agregar_notas()
-        elif opcion == "3":
-            mostrar_estudiantes()
-        elif opcion == "4":
-            calcular_promedio_general()
-        elif opcion == "5":
-            eliminar_estudiante()
-        elif opcion == "6":
+        if op == "1": agregar_estudiante()
+        elif op == "2": agregar_notas()
+        elif op == "3": mostrar_estudiantes()
+        elif op == "4": calcular_promedio_general()
+        elif op == "5": eliminar_estudiante()
+        elif op == "6": guardar_en_archivo()
+        elif op == "7": cargar_desde_archivo()
+        elif op == "8":
             guardar_en_archivo()
-        elif opcion == "7":
-            cargar_desde_archivo()
-        elif opcion == "8":
-            # Guardar automáticamente antes de salir
-            guardar_en_archivo()
-            print("👋 Saliendo del sistema... ¡Hasta pronto!")
+            print("👋 Saliendo...")
             break
         else:
-            print("⚠️ Opción inválida, intente nuevamente.")
+            print("⚠️ Opción inválida.")
+
 
 if __name__ == "__main__":
     cargar_desde_archivo()
     menu()
+
